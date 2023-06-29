@@ -1,0 +1,50 @@
+Dotnet-Docker Notes
+
+Reference: https://docs.docker.com/language/dotnet/
+
+
+#Use the official .NET SDK image that already has all the tools and packages that we need to bu ild a .NET application 
+
+FROM mcr.microsoft.com/dotnet/sdk:6.0 as build-env
+
+#To make things easier when running the rest of our commands, let’s create a working directory for our source files. This instructs Docker to use this path as the default location for all subsequent commands. By doing this, we do not have to type out full file paths but can use relative paths based on the working directory.
+
+WORKDIR /src
+
+# Copy only .csproj file to target . and run dotnet restore. each command create a container layer and cached by docker. Since, these files won't often change, we can take advantage of the caching by copying these files and running restore as separate command. 
+#Run dotnet restore command 
+
+COPY src/*.csproj . 
+RUN dotnet restore 
+
+
+#Now copy rest of the files 
+
+COPY src . 
+
+#publish the files to publish folder with release mode 
+
+RUN dotnet publish -c Release -o /publish
+
+#Now, we'll specify the image that we run the application and define the runtime. 
+
+FROM mcr.microsoft.com/dotnet/aspnet:6.0 as runtime 
+
+#Next, specify the working directory for this stage 
+
+WORKDIR /publish
+
+#Next, copy the /publish directory from the build-env into the runtime image 
+
+COPY --from=build-env /publish 
+
+#expose port 80 to incoming requests
+
+EXPOSE 80
+
+#Now, tell docker what command we want to run when the image is executed insde a container. 
+
+ENTRYPOINT ["dotnet", "MyWebApp.dll"]
+
+
+
